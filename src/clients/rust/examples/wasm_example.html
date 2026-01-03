@@ -113,7 +113,7 @@
     </div>
 
     <script type="module">
-        import init, { WasmClient, WasmAccount, WasmTransfer, wasm_generate_id } from './pkg/tigerbeetle.js';
+        import init, { WasmClient, wasm_generate_id } from '/pkg/tigerbeetle.js';
 
         let client = null;
 
@@ -136,7 +136,13 @@
                 client = new WasmClient(clusterId, addresses);
                 
                 document.getElementById('clientResult').textContent = 
-                    `Client created successfully!\nCluster ID: ${client.get_cluster_id()}\nAddresses: ${client.get_addresses()}`;
+                    `Client created successfully!\nCluster ID: ${client.get_cluster_id()}\nAddresses: ${client.get_addresses()}\n\nConnecting...`;
+                
+                // Automatically connect after creating client
+                await client.connect();
+                
+                document.getElementById('clientResult').textContent += '\nConnection completed! Ready for operations.';
+                
             } catch (error) {
                 document.getElementById('clientResult').textContent = `Error: ${error}`;
             }
@@ -160,17 +166,16 @@
             }
 
             try {
-                const account = new WasmAccount();
-                account.set_id(document.getElementById('accountId').value);
-                account.set_ledger(parseInt(document.getElementById('ledger').value));
-                account.set_code(parseInt(document.getElementById('code').value));
+                // Create account object directly as JavaScript object
+                const account = {
+                    id: document.getElementById('accountId').value,
+                    ledger: parseInt(document.getElementById('ledger').value),
+                    code: parseInt(document.getElementById('code').value)
+                };
                 
-                const accountJson = account.to_json();
-                const accountsJson = JSON.stringify([JSON.parse(accountJson)]);
-                
-                const result = await client.create_accounts(accountsJson);
+                const result = await client.create_accounts([account]);
                 document.getElementById('accountResult').textContent = 
-                    `Request sent!\nAccount JSON: ${accountJson}\nServer Response: ${result}`;
+                    `Request sent!\nAccount: ${JSON.stringify(account, null, 2)}\nServer Response: ${JSON.stringify(result, null, 2)}`;
             } catch (error) {
                 document.getElementById('accountResult').textContent = `Error: ${error}`;
             }
@@ -184,20 +189,19 @@
             }
 
             try {
-                const transfer = new WasmTransfer();
-                transfer.set_id(document.getElementById('transferId').value);
-                transfer.set_debit_account_id(document.getElementById('debitAccountId').value);
-                transfer.set_credit_account_id(document.getElementById('creditAccountId').value);
-                transfer.set_amount(document.getElementById('amount').value);
-                transfer.set_ledger(parseInt(document.getElementById('transferLedger').value));
-                transfer.set_code(parseInt(document.getElementById('transferCode').value));
+                // Create transfer object directly as JavaScript object
+                const transfer = {
+                    id: document.getElementById('transferId').value,
+                    debit_account_id: document.getElementById('debitAccountId').value,
+                    credit_account_id: document.getElementById('creditAccountId').value,
+                    amount: document.getElementById('amount').value,
+                    ledger: parseInt(document.getElementById('transferLedger').value),
+                    code: parseInt(document.getElementById('transferCode').value)
+                };
                 
-                const transferJson = transfer.to_json();
-                const transfersJson = JSON.stringify([JSON.parse(transferJson)]);
-                
-                const result = await client.create_transfers(transfersJson);
+                const result = await client.create_transfers([transfer]);
                 document.getElementById('transferResult').textContent = 
-                    `Request sent!\nTransfer JSON: ${transferJson}\nServer Response: ${result}`;
+                    `Request sent!\nTransfer: ${JSON.stringify(transfer, null, 2)}\nServer Response: ${JSON.stringify(result, null, 2)}`;
             } catch (error) {
                 document.getElementById('transferResult').textContent = `Error: ${error}`;
             }
@@ -211,11 +215,12 @@
             }
 
             try {
-                const accountIds = document.getElementById('lookupAccountIds').value;
+                const accountIdsStr = document.getElementById('lookupAccountIds').value;
+                const accountIds = JSON.parse(accountIdsStr || '[]');
                 
                 const result = await client.lookup_accounts(accountIds);
                 document.getElementById('lookupResult').textContent = 
-                    `Request sent!\nAccount IDs: ${accountIds}\nServer Response: ${result}`;
+                    `Request sent!\nAccount IDs: ${JSON.stringify(accountIds, null, 2)}\nServer Response: ${JSON.stringify(result, null, 2)}`;
             } catch (error) {
                 document.getElementById('lookupResult').textContent = `Error: ${error}`;
             }
@@ -226,18 +231,43 @@
     </script>
 
     <div class="container">
-        <h2>Instructions</h2>
-        <p><strong>Note:</strong> This example requires a TigerBeetle HTTP proxy server running on the specified base URL.</p>
-        <p>The proxy server should expose the following endpoints:</p>
+        <h2>⚠️ Important: What's Actually Running</h2>
+        <div style="background-color: #fff3cd; padding: 15px; border: 1px solid #ffeaa7; border-radius: 5px; margin: 10px 0;">
+            <h3>🔍 Current Architecture:</h3>
+            <ul>
+                <li><strong>✅ TigerBeetle WASM Client</strong> - Running in your browser</li>
+                <li><strong>❌ TigerBeetle Database</strong> - NOT running (would need external server)</li>
+            </ul>
+            
+            <h3>📋 What This Demo Shows:</h3>
+            <ul>
+                <li>✅ WASM client loads successfully</li>
+                <li>✅ JavaScript API bindings work</li>
+                <li>✅ ID generation functions</li>
+                <li>✅ Type conversions (JS objects ↔ TigerBeetle structs)</li>
+                <li>⚠️ Network calls simulate success (no real database)</li>
+            </ul>
+        </div>
+        
+        <h3>🚀 To Connect to Real TigerBeetle:</h3>
+        <ol>
+            <li><strong>Start TigerBeetle server:</strong> <code>tigerbeetle start --addresses=3001 data.db</code></li>
+            <li><strong>Update address:</strong> Change "Base URL" to <code>3001</code> (direct TCP)</li>
+            <li><strong>Or use HTTP proxy:</strong> Set up proxy at <code>http://localhost:8080</code></li>
+        </ol>
+        
+        <h3>📝 HTTP Proxy Endpoints (if using proxy):</h3>
         <ul>
             <li><code>POST /accounts</code> - Create accounts</li>
             <li><code>POST /transfers</code> - Create transfers</li>
             <li><code>POST /accounts/lookup</code> - Lookup accounts</li>
             <li><code>POST /transfers/lookup</code> - Lookup transfers</li>
-            <li><code>POST /account-transfers</code> - Get account transfers</li>
-            <li><code>POST /account-balances</code> - Get account balances</li>
         </ul>
-        <p>Each endpoint should accept JSON data and forward it to the TigerBeetle server using the native protocol.</p>
+        
+        <div style="background-color: #e7f3ff; padding: 10px; border-left: 4px solid #2196F3; margin: 10px 0;">
+            <strong>💡 Key Point:</strong> The TigerBeetle <em>client</em> runs in WASM for web compatibility, 
+            but the TigerBeetle <em>database</em> runs as a native server for performance.
+        </div>
     </div>
 </body>
 </html>

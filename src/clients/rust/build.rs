@@ -3,13 +3,24 @@ use std::{env, path::Path};
 fn main() -> anyhow::Result<()> {
     let target_arch = env::var("CARGO_CFG_TARGET_ARCH")?;
     
-    // Skip native library linking for WASM target
+    let cargo_manifest_dir = env::var("CARGO_MANIFEST_DIR")?;
+
+    // For WASM target, try to link with native WASM library if available
     if target_arch == "wasm32" {
-        println!("cargo:warning=Building for WebAssembly - skipping native library linking");
+        println!("cargo:warning=Building for WebAssembly");
+        
+        // Check if native WASM library exists
+        let wasm_lib_path = format!("{cargo_manifest_dir}/assets/lib/wasm32-freestanding/libtb_client.a");
+        if Path::new(&wasm_lib_path).try_exists()? {
+            println!("cargo:warning=Found native WASM TigerBeetle library - linking");
+            println!("cargo:rustc-link-search=native={}/assets/lib/wasm32-freestanding", cargo_manifest_dir);
+            println!("cargo:rustc-link-lib=static=tb_client");
+            println!("cargo:rerun-if-changed={}", wasm_lib_path);
+        } else {
+            println!("cargo:warning=Native WASM library not found - using Rust fallback implementation");
+        }
         return Ok(());
     }
-
-    let cargo_manifest_dir = env::var("CARGO_MANIFEST_DIR")?;
 
     if !Path::new(&format!("{cargo_manifest_dir}/assets/tb_client.h")).try_exists()? {
         panic!(

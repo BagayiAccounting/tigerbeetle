@@ -19,6 +19,9 @@ include = [
   "assets/lib/*/{*.a,*.lib}",
 ]
 
+[lib]
+name = "tigerbeetle"
+crate-type = ["cdylib", "rlib"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2"
@@ -33,7 +36,6 @@ features = [
   "console",
 ]
 
-
 [dependencies]
 bitflags = "2.6.0"
 futures-channel = "0.3.31"
@@ -43,4 +45,3 @@ anyhow = "1.0.93"
 
 [dev-dependencies]
 anyhow = "1.0.93"
-futures = "0.3.31"

@@ -19,6 +19,7 @@ fn resolve_target(b: *std.Build, target_requested: ?[]const u8) !std.Build.Resol
         "x86_64-linux",
         "x86_64-macos",
         "x86_64-windows",
+        "wasm32-freestanding",
     };
     const cpus = .{
         "baseline+aes+neon",
@@ -26,6 +27,7 @@ fn resolve_target(b: *std.Build, target_requested: ?[]const u8) !std.Build.Resol
         "x86_64_v3+aes",
         "x86_64_v3+aes",
         "x86_64_v3+aes",
+        "baseline",
     };
 
     const arch_os, const cpu = inline for (triples, cpus) |triple, cpu| {
@@ -1275,6 +1277,7 @@ const platforms = .{
     .{ "aarch64-linux-musl", "linux-musl-arm64", "baseline+aes+neon" },
     .{ "aarch64-macos", "osx-arm64", "baseline+aes+neon" },
     .{ "x86_64-windows", "win-x64", "x86_64_v3+aes" },
+    .{ "wasm32-freestanding", "wasm32", "baseline" },
 };
 
 fn strip_glibc_version(triple: []const u8) []const u8 {
@@ -1312,8 +1315,13 @@ fn build_rust_client(
         }) catch unreachable;
         const resolved_target = b.resolveTargetQuery(query);
 
+        const root_source_file = if (std.mem.eql(u8, platform[0], "wasm32-freestanding"))
+            b.path("src/tigerbeetle/libtb_client_wasm.zig")
+        else
+            b.path("src/tigerbeetle/libtb_client.zig");
+
         const root_module = b.createModule(.{
-            .root_source_file = b.path("src/tigerbeetle/libtb_client.zig"),
+            .root_source_file = root_source_file,
             .target = resolved_target,
             .optimize = options.mode,
         });
@@ -2126,6 +2134,7 @@ fn download_release(
     else switch (target.result.cpu.arch) {
         .x86_64 => "x86_64",
         .aarch64 => "aarch64",
+        .wasm32 => return b.addWriteFiles().add("tigerbeetle", ""), // WASM doesn't need previous binary
         else => @panic("unsupported CPU"),
     };
 
