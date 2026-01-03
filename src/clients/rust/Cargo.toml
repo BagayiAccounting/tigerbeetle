@@ -19,8 +19,20 @@ include = [
   "assets/lib/*/{*.a,*.lib}",
 ]
 
-[lib]
-crate-type = [ "cdylib" ]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies.web-sys]
+version = "0.3"
+features = [
+  "console",
+]
+
 
 [dependencies]
 bitflags = "2.6.0"

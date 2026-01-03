@@ -339,6 +339,9 @@ use tb_client as tbc;
 mod conversions;
 mod time_based_id;
 
+#[cfg(target_arch = "wasm32")]
+pub mod wasm;
+
 pub use time_based_id::id;
 
 /// The tb_client completion context is unused by the Rust bindings.

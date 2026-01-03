@@ -1,6 +1,14 @@
 use std::{env, path::Path};
 
 fn main() -> anyhow::Result<()> {
+    let target_arch = env::var("CARGO_CFG_TARGET_ARCH")?;
+    
+    // Skip native library linking for WASM target
+    if target_arch == "wasm32" {
+        println!("cargo:warning=Building for WebAssembly - skipping native library linking");
+        return Ok(());
+    }
+
     let cargo_manifest_dir = env::var("CARGO_MANIFEST_DIR")?;
 
     if !Path::new(&format!("{cargo_manifest_dir}/assets/tb_client.h")).try_exists()? {
@@ -18,7 +26,6 @@ fn main() -> anyhow::Result<()> {
     let unix = env::var("CARGO_CFG_UNIX").is_ok();
     let windows = env::var("CARGO_CFG_WINDOWS").is_ok();
 
-    let target_arch = env::var("CARGO_CFG_TARGET_ARCH")?;
     let target_os = env::var("CARGO_CFG_TARGET_OS")?;
     let target_env = env::var("CARGO_CFG_TARGET_ENV")?;
 

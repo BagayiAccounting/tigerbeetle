@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>TigerBeetle WASM Client Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .result {
+            background-color: #f0f0f0;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+            white-space: pre-wrap;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        textarea {
+            height: 100px;
+        }
+    </style>
+</head>
+<body>
+    <h1>TigerBeetle WASM Client Example</h1>
+    
+    <div class="container">
+        <h2>Client Configuration</h2>
+        <label>Cluster ID:</label>
+        <input type="text" id="clusterId" value="0" />
+        
+        <label>Base URL (TigerBeetle Proxy Server):</label>
+        <input type="text" id="baseUrl" value="http://localhost:8080" />
+        
+        <button onclick="createClient()">Create Client</button>
+        <div id="clientResult" class="result"></div>
+    </div>
+
+    <div class="container">
+        <h2>Create Account</h2>
+        <label>Account ID:</label>
+        <input type="text" id="accountId" />
+        <button onclick="generateAccountId()">Generate ID</button>
+        
+        <label>Ledger:</label>
+        <input type="number" id="ledger" value="1" />
+        
+        <label>Code:</label>
+        <input type="number" id="code" value="1" />
+        
+        <button onclick="createAccount()">Create Account</button>
+        <div id="accountResult" class="result"></div>
+    </div>
+
+    <div class="container">
+        <h2>Create Transfer</h2>
+        <label>Transfer ID:</label>
+        <input type="text" id="transferId" />
+        <button onclick="generateTransferId()">Generate ID</button>
+        
+        <label>Debit Account ID:</label>
+        <input type="text" id="debitAccountId" />
+        
+        <label>Credit Account ID:</label>
+        <input type="text" id="creditAccountId" />
+        
+        <label>Amount:</label>
+        <input type="text" id="amount" value="100" />
+        
+        <label>Ledger:</label>
+        <input type="number" id="transferLedger" value="1" />
+        
+        <label>Code:</label>
+        <input type="number" id="transferCode" value="1" />
+        
+        <button onclick="createTransfer()">Create Transfer</button>
+        <div id="transferResult" class="result"></div>
+    </div>
+
+    <div class="container">
+        <h2>Lookup Accounts</h2>
+        <label>Account IDs (JSON array):</label>
+        <textarea id="lookupAccountIds" placeholder='["account_id_1", "account_id_2"]'></textarea>
+        
+        <button onclick="lookupAccounts()">Lookup Accounts</button>
+        <div id="lookupResult" class="result"></div>
+    </div>
+
+    <script type="module">
+        import init, { WasmClient, WasmAccount, WasmTransfer, wasm_generate_id } from './pkg/tigerbeetle.js';
+
+        let client = null;
+
+        // Initialize WASM module
+        async function initWasm() {
+            await init();
+            console.log('TigerBeetle WASM module initialized');
+            
+            // Generate initial IDs
+            document.getElementById('accountId').value = wasm_generate_id();
+            document.getElementById('transferId').value = wasm_generate_id();
+        }
+
+        // Create client
+        window.createClient = async function() {
+            try {
+                const clusterId = document.getElementById('clusterId').value;
+                const addresses = document.getElementById('baseUrl').value;
+                
+                client = new WasmClient(clusterId, addresses);
+                
+                document.getElementById('clientResult').textContent = 
+                    `Client created successfully!\nCluster ID: ${client.get_cluster_id()}\nAddresses: ${client.get_addresses()}`;
+            } catch (error) {
+                document.getElementById('clientResult').textContent = `Error: ${error}`;
+            }
+        };
+
+        // Generate account ID
+        window.generateAccountId = function() {
+            document.getElementById('accountId').value = wasm_generate_id();
+        };
+
+        // Generate transfer ID
+        window.generateTransferId = function() {
+            document.getElementById('transferId').value = wasm_generate_id();
+        };
+
+        // Create account
+        window.createAccount = async function() {
+            if (!client) {
+                document.getElementById('accountResult').textContent = 'Please create a client first';
+                return;
+            }
+
+            try {
+                const account = new WasmAccount();
+                account.set_id(document.getElementById('accountId').value);
+                account.set_ledger(parseInt(document.getElementById('ledger').value));
+                account.set_code(parseInt(document.getElementById('code').value));
+                
+                const accountJson = account.to_json();
+                const accountsJson = JSON.stringify([JSON.parse(accountJson)]);
+                
+                const result = await client.create_accounts(accountsJson);
+                document.getElementById('accountResult').textContent = 
+                    `Request sent!\nAccount JSON: ${accountJson}\nServer Response: ${result}`;
+            } catch (error) {
+                document.getElementById('accountResult').textContent = `Error: ${error}`;
+            }
+        };
+
+        // Create transfer
+        window.createTransfer = async function() {
+            if (!client) {
+                document.getElementById('transferResult').textContent = 'Please create a client first';
+                return;
+            }
+
+            try {
+                const transfer = new WasmTransfer();
+                transfer.set_id(document.getElementById('transferId').value);
+                transfer.set_debit_account_id(document.getElementById('debitAccountId').value);
+                transfer.set_credit_account_id(document.getElementById('creditAccountId').value);
+                transfer.set_amount(document.getElementById('amount').value);
+                transfer.set_ledger(parseInt(document.getElementById('transferLedger').value));
+                transfer.set_code(parseInt(document.getElementById('transferCode').value));
+                
+                const transferJson = transfer.to_json();
+                const transfersJson = JSON.stringify([JSON.parse(transferJson)]);
+                
+                const result = await client.create_transfers(transfersJson);
+                document.getElementById('transferResult').textContent = 
+                    `Request sent!\nTransfer JSON: ${transferJson}\nServer Response: ${result}`;
+            } catch (error) {
+                document.getElementById('transferResult').textContent = `Error: ${error}`;
+            }
+        };
+
+        // Lookup accounts
+        window.lookupAccounts = async function() {
+            if (!client) {
+                document.getElementById('lookupResult').textContent = 'Please create a client first';
+                return;
+            }
+
+            try {
+                const accountIds = document.getElementById('lookupAccountIds').value;
+                
+                const result = await client.lookup_accounts(accountIds);
+                document.getElementById('lookupResult').textContent = 
+                    `Request sent!\nAccount IDs: ${accountIds}\nServer Response: ${result}`;
+            } catch (error) {
+                document.getElementById('lookupResult').textContent = `Error: ${error}`;
+            }
+        };
+
+        // Initialize when page loads
+        initWasm();
+    </script>
+
+    <div class="container">
+        <h2>Instructions</h2>
+        <p><strong>Note:</strong> This example requires a TigerBeetle HTTP proxy server running on the specified base URL.</p>
+        <p>The proxy server should expose the following endpoints:</p>
+        <ul>
+            <li><code>POST /accounts</code> - Create accounts</li>
+            <li><code>POST /transfers</code> - Create transfers</li>
+            <li><code>POST /accounts/lookup</code> - Lookup accounts</li>
+            <li><code>POST /transfers/lookup</code> - Lookup transfers</li>
+            <li><code>POST /account-transfers</code> - Get account transfers</li>
+            <li><code>POST /account-balances</code> - Get account balances</li>
+        </ul>
+        <p>Each endpoint should accept JSON data and forward it to the TigerBeetle server using the native protocol.</p>
+    </div>
+</body>
+</html>
